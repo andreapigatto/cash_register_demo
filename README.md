@@ -1,5 +1,9 @@
 # Pizza Challenge
 
+## Setup
+
+After cloning the repository, run `yarn install` to install the node_modules. After simply run `yarn start` to launch the project in dev mode.
+
 ## Available Scripts
 
 In the project directory, you can run:
