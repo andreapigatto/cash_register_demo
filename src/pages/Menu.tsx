@@ -76,7 +76,10 @@ function Menu(): JSX.Element {
 
   return (
     <Layout prevButton={{ route: '/' }}>
-      <div className={`grid ${overview ? 'md:grid-cols-2' : ''}`} data-test="menu-container">
+      <div
+        className={`grid ${overview ? 'md:grid-cols-2' : ''}`}
+        data-test="menu-container"
+      >
         <div className="px-8 text-center">
           <p className="text-right text-lg mb-8">{`Total: ${total}$`}</p>
           <p className="mb-8">Choose one of the pizza Sizes:</p>
