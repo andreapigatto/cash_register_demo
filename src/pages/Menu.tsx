@@ -1,174 +1,233 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRecoilState } from 'recoil'
 import { useHistory } from 'react-router-dom'
 
 import Layout from '../Layout/Layout'
 import Item from '../components/Item/Item'
 import Button from '../components/Button/Button'
+import Toggle from '../components/Toggle/Toggle'
 
-import { Sizes, Toppings } from '../types'
+import { Items } from '../types'
 import orderAtom from '../atoms/OrderAtom'
+import regionAtom from '../atoms/RegionAtom'
+
+import { items, rules, bag } from '../config'
 
 function Menu(): JSX.Element {
-  const [sizeSelected, setSizeSelected] = useState<Sizes | ''>('')
-  const [toppingSelected, setToppingSelected] = useState<Toppings[]>([])
+  const [itemSelected, setItemSelected] = useState<Items | ''>('')
+  const [numItems, setNumItems] = useState(0)
   const [total, setTotal] = useState(0)
-  const [overview, setOverview] = useState<{
-    pizzaList: { size: Sizes; toppings: Toppings[] }[]
-    price: number
-    currency: 'USD' | 'EUR'
-  } | null>(null)
+  const [itemsList, setItemsList] = useState<
+    | {
+        item: Items
+        price: number
+      }[]
+    | null
+  >(null)
   const [resetClicked, setResetClicked] = useState(false)
   const [order, setOrder] = useRecoilState(orderAtom)
+  const [region] = useRecoilState(regionAtom)
+  const [isBag, setIsBag] = useState(false)
 
   const history = useHistory()
 
-  function onSizeClicked(name: Sizes | Toppings, price: number) {
-    setSizeSelected(name as Sizes)
-    setTotal(overview ? overview.price + price : price)
-    setToppingSelected([])
+  const numBags = useMemo(() => Math.ceil(numItems / bag.maxItems), [numItems])
+
+  useEffect(() => {
+    if (bag && itemsList) {
+      if (isBag) {
+        const newItems = itemsList
+        const bagExist = newItems.find((item) => item.item === 'bag')
+        if (!bagExist) {
+          Array.from(Array(numBags).keys()).forEach((_) => {
+            newItems.push({
+              item: 'bag',
+              price: bag.price[region.value],
+            })
+          })
+          setItemsList(newItems)
+          setTotal((tot) => tot + bag.price[region.value] * numBags)
+        } else {
+          const newItemsNoBag = newItems.filter((item) => item.item !== 'bag')
+          Array.from(Array(numBags).keys()).forEach((_) => {
+            newItemsNoBag.push({
+              item: 'bag',
+              price: bag.price[region.value],
+            })
+          })
+          setItemsList(newItemsNoBag)
+        }
+      } else {
+        const bagExist = itemsList.find((item) => item.item === 'bag')
+        if (bagExist) {
+          const newItems = itemsList.filter((item) => item.item !== 'bag')
+          setItemsList(newItems)
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBag, numBags])
+
+  useEffect(() => {
+    if (itemsList) {
+      const tot = itemsList
+        .map((item) => item.price)
+        .reduce((agg, item) => agg + item, 0)
+      setTotal(tot)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(itemsList)])
+
+  function checkRules() {
+    const rule = rules.find((r) => r.item === itemSelected)
+    if (!rule) return false
+    if (!itemsList) return false
+    const checkCount = itemsList.filter(
+      (item) => item.item === itemSelected
+    ).length
+    return checkCount === rule.count - 1
   }
 
-  function onToppingClicked(name: Sizes | Toppings, price: number) {
-    const toppingList = toppingSelected
-    toppingList.push(name as Toppings)
-
-    setToppingSelected(toppingList)
-    setTotal(total + price)
+  function removeItems() {
+    const rule = rules.find((r) => r.item === itemSelected)
+    if (!rule) return false
+    if (!itemsList) return false
+    const newItems = itemsList.filter((item) => item.item !== itemSelected)
+    const checkCount = itemsList.filter(
+      (item) => item.item === itemSelected
+    ).length
+    let i = rule.count
+    while (i < checkCount) {
+      newItems.push({
+        item: itemSelected as Items,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        price: items.find((item) => item.item === itemSelected)!.price,
+      })
+      // eslint-disable-next-line no-plusplus
+      i++
+    }
+    return newItems
   }
 
   function onAddClicked() {
-    const pizzaListNew = overview ? overview.pizzaList : []
-    pizzaListNew.push({
-      size: sizeSelected as Sizes,
-      toppings: toppingSelected,
-    })
-    setOverview({
-      pizzaList: pizzaListNew,
-      price: total,
-      currency: 'USD',
-    })
+    let itemsListNew = itemsList || []
+    const isRule = checkRules()
 
-    setSizeSelected('')
-    setToppingSelected([])
+    if (isRule) {
+      const newItems = removeItems()
+      if (newItems) {
+        itemsListNew = newItems
+        itemsListNew.push({
+          item: `Special Price - ${itemSelected}` as Items,
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          price: rules.find((r) => r.item === itemSelected)!.price,
+        })
+
+        setItemsList(itemsListNew)
+      }
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const { price } = items.find((item) => item.item === itemSelected)!
+
+      itemsListNew.push({
+        item: itemSelected as Items,
+        price,
+      })
+      setItemsList(itemsListNew)
+    }
+
+    setNumItems((num) => num + 1)
+    setItemSelected('')
     setResetClicked(!resetClicked)
   }
 
-  function onResetClicked() {
-    setSizeSelected('')
-    setToppingSelected([])
-    setTotal(overview ? overview.price : 0)
-    setResetClicked(!resetClicked)
+  function onItemClicked(name: Items) {
+    setItemSelected(name as Items)
   }
 
   function onResetCartClicked() {
-    setSizeSelected('')
-    setToppingSelected([])
+    setItemSelected('')
     setTotal(0)
-    setOverview(null)
+    setItemsList(null)
     setResetClicked(!resetClicked)
+    setIsBag(false)
   }
 
   function onCheckoutClicked() {
-    setOrder({ ...order, order: overview })
-    history.push('/checkout')
+    setOrder({ ...order, itemsList, total, currency: 'GPB' })
+    history.push('/order-confirmed')
+  }
+
+  function onChangeCheckboxHandler() {
+    setIsBag((value) => !value)
   }
 
   return (
-    <Layout prevButton={{ route: '/' }}>
+    <Layout>
       <div
-        className={`grid ${overview ? 'md:grid-cols-2' : ''}`}
+        className={`grid ${itemsList ? 'md:grid-cols-2' : ''}`}
         data-test="menu-container"
       >
         <div className="px-8 text-center">
-          <p className="text-right text-lg mb-8">{`Total: ${total}$`}</p>
-          <p className="mb-8">Choose one of the pizza Sizes:</p>
+          <p className="mb-8">Choose one of the Items:</p>
           <div className="flex flex-col items-center">
-            <Item
-              name="small"
-              price={15}
-              callback={onSizeClicked}
-              selected={sizeSelected === 'small'}
-            />
-            <Item
-              name="medium"
-              price={20}
-              callback={onSizeClicked}
-              selected={sizeSelected === 'medium'}
-            />
-            <Item
-              name="large"
-              price={25}
-              callback={onSizeClicked}
-              selected={sizeSelected === 'large'}
-            />
-          </div>
-          {sizeSelected && (
-            <div className="mb-8">
-              <p className="mb-8 mt-8">
-                Choose any combination of the following toppings:
-              </p>
-              <div className="flex flex-col items-center">
-                <Item
-                  name="olives"
-                  price={3}
-                  callback={onToppingClicked}
-                  selected={toppingSelected.includes('olives')}
-                />
-                <Item
-                  name="pepperoni"
-                  price={4}
-                  callback={onToppingClicked}
-                  selected={toppingSelected.includes('pepperoni')}
-                />
-                <Item
-                  name="mushrooms"
-                  price={2}
-                  callback={onToppingClicked}
-                  selected={toppingSelected.includes('mushrooms')}
-                />
-                <Item
-                  name="pepper"
-                  price={2}
-                  callback={onToppingClicked}
-                  selected={toppingSelected.includes('pepper')}
-                />
-              </div>
-            </div>
-          )}
-          {sizeSelected && (
-            <div className="space-x-4">
-              <Button name="ADD" callback={onAddClicked} />
-              <Button
-                name="RESET CURRENT SELECTION"
-                callback={onResetClicked}
+            {items.map((item) => (
+              <Item
+                key={item.item}
+                name={item.item}
+                price={item.price}
+                callback={onItemClicked}
+                selected={itemSelected === item.item}
               />
-            </div>
-          )}
+            ))}
+          </div>
+          {itemSelected && <Button name="ADD" callback={onAddClicked} />}
         </div>
         <div className="px-8">
-          {overview && <p className="text-center mb-16">Cart</p>}
-          {overview &&
-            overview.pizzaList.map((pizza, index) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <div className="mb-4" key={index}>
-                <p>{`Pizza ${index + 1}`}</p>
-                <ul className="pl-4 list-disc">
-                  <li>{`Size ${pizza.size}`}</li>
-                  <li>
-                    {pizza.toppings.length > 0
-                      ? `Toppings ${pizza.toppings}`
-                      : 'No Toppings'}
-                  </li>
-                </ul>
+          {itemsList && (
+            <>
+              <p className="text-center mb-8">Cart</p>
+              <div className="flex justify-end mb-8">
+                <Toggle
+                  label="add bag/s"
+                  checked={isBag}
+                  onChange={onChangeCheckboxHandler}
+                />
               </div>
-            ))}
-          {overview && (
-            <div className="mt-8 flex justify-center items-center space-x-4">
-              <p>{`total ${overview.price}$`}</p>
-              <Button name="CHECKOUT" callback={onCheckoutClicked} />
-              <Button name="RESET CART" callback={onResetCartClicked} />
-            </div>
+              {itemsList
+                .filter((item) => item.item !== 'bag')
+                .map((item, index) => (
+                  // eslint-disable-next-line react/no-array-index-key
+                  <div className="mb-4 mx-16" key={index}>
+                    <ul className="pl-4 list-disc">
+                      <li>
+                        <div className="flex justify-between">
+                          <p>{`Item ${item.item}`}</p>
+                          <p>{`${item.price} £`}</p>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                ))}
+              {isBag && (
+                // eslint-disable-next-line react/no-array-index-key
+                <div className="mb-4 mx-16">
+                  <ul className="pl-4 list-disc">
+                    <li>
+                      <div className="flex justify-between">
+                        <p>{`${numBags} ${numBags === 1 ? 'bag' : 'bags'}`}</p>
+                        <p>{`${bag.price[region.value] * numBags} £`}</p>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              )}
+              <div className="mt-12 flex justify-center items-center space-x-4">
+                <p>{`total ${total}£`}</p>
+                <Button name="CHECKOUT" callback={onCheckoutClicked} />
+                <Button name="RESET CART" callback={onResetCartClicked} />
+              </div>
+            </>
           )}
         </div>
       </div>

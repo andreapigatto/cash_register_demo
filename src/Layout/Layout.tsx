@@ -1,6 +1,5 @@
 import { ReactNode } from 'react'
 import Button from '../components/Button/Button'
-import Logo from '../components/Logo/Logo'
 
 type ComponentProps = {
   children: ReactNode
@@ -15,9 +14,8 @@ function Layout({
 }: ComponentProps): JSX.Element {
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="flex justify-center items-center space-x-4 text-3xl text-red-500 my-16">
-        <Logo />
-        <h1>Pizza challenge</h1>
+      <h1 className="flex justify-center items-center space-x-4 text-3xl text-gray-500 my-16">
+        <h1>Cash register</h1>
       </h1>
       {children}
       {prevButton && <div className="mt-8 border-t-2" />}

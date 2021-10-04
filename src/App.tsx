@@ -1,13 +1,12 @@
 import { Route, Switch, Redirect } from 'react-router-dom'
-import { UserCredentials, Menu, PaymentInfo, OrderConfirmation } from './pages'
+import { Menu, OrderConfirmation, Intro } from './pages'
 
 function App(): JSX.Element {
   return (
     <Switch>
-      <Route path="/menu" component={Menu} />
-      <Route path="/checkout" component={PaymentInfo} />
       <Route path="/order-confirmed" component={OrderConfirmation} />
-      <Route path="/" exact component={UserCredentials} />
+      <Route path="/menu" exact component={Menu} />
+      <Route path="/" exact component={Intro} />
       <Redirect to="/" />
     </Switch>
   )

@@ -1,4 +1,4 @@
-# Pizza Challenge
+# Cash Register
 
 ## Setup
 
