@@ -1,5 +1,10 @@
 # Cash Register
 
+## App
+The app deployed is at this link: cashregisterdemo.netlify.app
+
+------------
+
 ## Setup
 
 After cloning the repository, run `yarn install` to install the node_modules. After simply run `yarn start` to launch the project in dev mode.
