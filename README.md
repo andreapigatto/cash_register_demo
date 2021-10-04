@@ -1,7 +1,7 @@
 # Cash Register
 
 ## App
-The app deployed is at this link: [http://cashregisterdemo.netlify.app](cashregisterdemo.netlify.app)
+The app deployed is at this link: [https://cashregisterdemo.netlify.app](cashregisterdemo.netlify.app)
 
 ------------
 
